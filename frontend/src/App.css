@@ -169,27 +169,6 @@
   height: calc(100vh - 120px);
   padding-top: 24px;
   padding-left: 20px;
-  padding-right: 20px;
-  box-sizing: border-box;
-  transition: height 420ms ease, padding 420ms ease;
-}
-
-/* When the welcome hero is hidden (we expand chat to near-top) */
-.content-wrapper.welcome-hidden {
-  /* expand the wrapper so messages area can stretch from near top to above chat input */
-  height: 100vh;
-  /* almost full viewport height - leaves small top margin */
-
-  padding-top: 28px;
-  padding-left: 28px;
-  padding-right: 28px;
-
-}
-
-/* When input pinned, provide room at the bottom, so last message isn't hidden */
-.content-wrapper.pinned-with-input {
-  padding-bottom: 160px;
-  /* adjust if your chat input height changes */
 }
 
 /* messages container should take available space and be scrollable */

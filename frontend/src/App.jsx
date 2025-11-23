@@ -81,44 +81,50 @@ function App() {
       {!userName && <NameDialog onNameSubmit={handleNameSubmit} />}
 
       <main className="main-content">
-        <div className={`content-wrapper ${chatPinned ? 'pinned-with-input' : ''} ${welcomeVisible ? '' : 'welcome-hidden'}`}>
+        {/* Render WelcomeHero only while visible. Once false we unmount it. */}
+        {welcomeVisible && (
+          <div className="content-wrapper">
+            <WelcomeHero userName={userName} />
+            {/* While welcome is visible we keep the "regular" messages container below the hero */}
+            <div ref={messagesRef} className="messages-container" aria-live="polite">
+              {messages.map((msg) => (
+                <div key={msg.id} className={`message-bubble ${msg.role === 'bot' ? 'bot' : 'user'}`}>
+                  <div className="message-text" style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
+                </div>
+              ))}
+              {botTyping && (
+                <div className="message-bubble bot typing">
+                  <div className="message-text">typing...</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
-
-          {/* pass isVisible to allow fade-out animation */}
-          <WelcomeHero userName={userName} isVisible={welcomeVisible} />
-
-          {/* simple messages area right above chat input */}
-          <div ref={messagesRef} className="messages-container" aria-live="polite">
+        {/* When welcome is gone, render messages container at top-level inside main, fullscreen mode */}
+        {!welcomeVisible && (
+          <div className="messages-container fullscreen" ref={messagesRef} aria-live="polite">
             {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`message-bubble ${msg.role === 'bot' ? 'bot' : 'user'}`}>
+              <div key={msg.id} className={`message-bubble ${msg.role === 'bot' ? 'bot' : 'user'}`}>
                 <div className="message-text" style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
-
               </div>
             ))}
-
-            {/* show typing indicator if botTyping */}
             {botTyping && (
               <div className="message-bubble bot typing">
                 <div className="message-text">typing...</div>
               </div>
             )}
           </div>
+        )}
 
-          {/* ChatInput keeps same behavior; we only tell it whether it should be pinned */}
-          <ChatInput
-            isPinned={chatPinned}
-            onSend={(text) => {
-              // local echo of user message
-              const userMsg = { id: `user_${Date.now()}`, role: 'user', text };
-              setMessages((m) => [...m, userMsg]);
+        {/* ChatInput stays rendered as before (pinned logic still works) */}
+        <ChatInput isPinned={chatPinned} onSend={(text) => {
+          const userMsg = { id: `user_${Date.now()}`, role: 'user', text, createdAt: new Date().toISOString() };
+          setMessages((m) => [...m, userMsg]);
 
-              // TODO: send to backend here
-              console.log('USER SEND (TODO: send to backend):', text);
-            }}
-          />
-        </div>
+          // TODO: send to backend here
+          console.log('USER SEND (TODO: send to backend):', text);
+        }} />
       </main>
     </div>
   );

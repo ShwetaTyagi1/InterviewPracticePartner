@@ -2,7 +2,7 @@
 import React from 'react';
 import './WelcomeHero.css';
 
-const WelcomeHero = ({ userName, isVisible = true }) => {
+const WelcomeHero = ({ userName }) => {
     const getGreeting = () => {
         const hour = new Date().getHours();
         if (hour < 12) return 'Good morning';
@@ -11,10 +11,11 @@ const WelcomeHero = ({ userName, isVisible = true }) => {
     };
 
     return (
-        // toggle "exiting" class to animate out smoothly when isVisible becomes false
-        <div className={`welcome-hero ${isVisible ? '' : 'exiting'}`} aria-hidden={!isVisible}>
+        <div className="welcome-hero">
             <h1 className="greeting-text">
-                <span className="greeting-gradient">{getGreeting()}, {userName || 'Candidate'}.</span>
+                <span className="greeting-gradient">
+                    {getGreeting()}, {userName || 'Candidate'}.
+                </span>
             </h1>
             <p className="sub-text">Ready to practice your interview skills?</p>
         </div>
