@@ -18,8 +18,6 @@ class Turn(BaseModel):
     answer_text: Optional[str] = None
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     feedback: Optional[Dict[str, Any]] = None  # LLMEvaluation or fallback
-    classification: Optional[str] = None       # correct|somewhat_correct|wrong
-    confidence: Optional[float] = None
 
 class SessionModel(BaseModel):
     id: str = Field(default_factory=gen_id, alias="_id")

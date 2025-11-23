@@ -13,8 +13,7 @@ ALLOWED_INTENTS = {
     "clarify_question",
     "request_solution",
     "ask_if_correct",
-    "answer_main",
-    "answer_followup",
+    "answer",
     "positive_ready",
     "negative_ready",
     "skip_question",
@@ -36,7 +35,7 @@ Return ONLY a valid JSON object with NO text before or after it.
 Schema:
 {{
   "intent": "one of: clarify_question | request_solution | ask_if_correct |
-             answer_main | answer_followup | positive_ready | negative_ready |
+             answer | positive_ready | negative_ready |
              skip_question | off_topic | other",
   "intent_confidence": 0.0,
   "clarify_target": "",
