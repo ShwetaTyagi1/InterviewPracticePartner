@@ -21,14 +21,6 @@ function App() {
     }
   }, [messages]);
 
-  // debug: log the messages container geometry when messages change
-  useEffect(() => {
-    const el = messagesRef.current;
-    if (!el) return;
-    // log heights so we can verify the container has nonzero height and scrollable content
-    console.log('[MSG DEBUG] clientHeight:', el.clientHeight, 'scrollHeight:', el.scrollHeight, 'scrollTop:', el.scrollTop);
-  }, [messages]);
-
   const [welcomeVisible, setWelcomeVisible] = useState(true);
   const [chatPinned, setChatPinned] = useState(false);
   const [botTyping, setBotTyping] = useState(false);
