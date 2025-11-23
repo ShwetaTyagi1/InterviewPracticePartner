@@ -2,7 +2,7 @@ import os
 import logging
 from dotenv import load_dotenv
 from flask import Flask, jsonify
-
+from flask_cors import CORS
 # Load environment variables from .env
 load_dotenv()
 
@@ -30,6 +30,7 @@ def create_app():
     Add route blueprints later when ready.
     """
     app = Flask(__name__)
+    CORS(app, resources={r"/*": {"origins": "*"}})
     app.config["JSON_SORT_KEYS"] = False
 
     from routes.session_routes import bp as session_bp
@@ -53,8 +54,7 @@ def create_app():
 
 if __name__ == "__main__":
     # Run app for development
-    host = os.getenv("FLASK_RUN_HOST", "0.0.0.0")
     port = int(os.getenv("FLASK_RUN_PORT", "5000"))
 
     application = create_app()
-    application.run(host=host, port=port, debug=True)
+    application.run(host="0.0.0.0", port=port, debug=True)

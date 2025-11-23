@@ -2,3 +2,4 @@ Flask
 python-dotenv
 pymongo
 pydantic
+flask-cors
