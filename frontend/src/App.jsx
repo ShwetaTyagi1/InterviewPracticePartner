@@ -5,11 +5,15 @@ import ChatInput from './components/ChatInput';
 import NameDialog from './components/NameDialog';
 import './App.css';
 
+import { startSession, sendMessage } from './api/api';
+
 function App() {
   const [userName, setUserName] = useState(null);
 
-
-
+  // Start session on mount
+  useEffect(() => {
+    startSession().catch(err => console.error("Session start failed", err));
+  }, []);
 
   // messages state (very small message model)
   const [messages, setMessages] = useState([]);
@@ -65,6 +69,48 @@ function App() {
     }, 1500); // typing duration
   };
 
+  const handleSendMessage = async (text) => {
+    if (!text.trim()) return;
+
+    // 1. Add user message immediately
+    const userMsg = {
+      id: `user_${Date.now()}`,
+      role: 'user',
+      text,
+      createdAt: new Date().toISOString()
+    };
+    setMessages((prev) => [...prev, userMsg]);
+
+    // 2. Show typing indicator
+    setBotTyping(true);
+
+    try {
+      // 3. Call backend API
+      const data = await sendMessage(text);
+
+      // 4. Update state with bot response
+      setBotTyping(false);
+      const botMsg = {
+        id: `bot_${Date.now()}`,
+        role: 'bot',
+        text: data.reply,
+        createdAt: new Date().toISOString()
+      };
+      setMessages((prev) => [...prev, botMsg]);
+    } catch (error) {
+      console.error("Failed to get response:", error);
+      setBotTyping(false);
+      // Optional: Add error message to chat
+      const errorMsg = {
+        id: `bot_err_${Date.now()}`,
+        role: 'bot',
+        text: "Sorry, I'm having trouble connecting to the server right now.",
+        createdAt: new Date().toISOString()
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    }
+  };
+
   // cleanup on unmount
   useEffect(() => {
     return () => {
@@ -117,13 +163,7 @@ function App() {
         {/* ChatInput stays rendered as before (pinned logic still works) */}
         {/* ChatInput stays rendered as before (pinned logic still works) */}
         {chatPinned && (
-          <ChatInput isPinned={chatPinned} onSend={(text) => {
-            const userMsg = { id: `user_${Date.now()}`, role: 'user', text, createdAt: new Date().toISOString() };
-            setMessages((m) => [...m, userMsg]);
-
-            // TODO: send to backend here
-            console.log('USER SEND (TODO: send to backend):', text);
-          }} />
+          <ChatInput isPinned={chatPinned} onSend={handleSendMessage} />
         )}
       </main>
     </div>
