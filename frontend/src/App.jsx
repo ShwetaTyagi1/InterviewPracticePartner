@@ -21,6 +21,14 @@ function App() {
     }
   }, [messages]);
 
+  // debug: log the messages container geometry when messages change
+  useEffect(() => {
+    const el = messagesRef.current;
+    if (!el) return;
+    // log heights so we can verify the container has nonzero height and scrollable content
+    console.log('[MSG DEBUG] clientHeight:', el.clientHeight, 'scrollHeight:', el.scrollHeight, 'scrollTop:', el.scrollTop);
+  }, [messages]);
+
   const [welcomeVisible, setWelcomeVisible] = useState(true);
   const [chatPinned, setChatPinned] = useState(false);
   const [botTyping, setBotTyping] = useState(false);
@@ -32,40 +40,29 @@ function App() {
     setUserName(name);
     // ensure welcome shows initially
     setWelcomeVisible(true);
+  };
 
-    // clear any existing timers
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (unmountWelcomeTimeoutRef.current) clearTimeout(unmountWelcomeTimeoutRef.current);
+  const handleStartSession = () => {
+    // kick off fade animation by toggling a class (we keep element in DOM briefly for animation)
+    setWelcomeVisible(false);
 
-    // Start the 10s flow AFTER user presses Continue
-    timerRef.current = setTimeout(() => {
-      // kick off fade animation by toggling a class (we keep element in DOM briefly for animation)
-      setWelcomeVisible(false);
+    // pin the chat input (this will apply pinned class with smooth transition)
+    setChatPinned(true);
 
-      // pin the chat input (this will apply pinned class with smooth transition)
-      setChatPinned(true);
+    // show typing indicator for ~800ms then push bot message
+    setBotTyping(true);
+    setTimeout(() => {
+      setBotTyping(false);
 
-      // show typing indicator for ~800ms then push bot message
-      setBotTyping(true);
-      setTimeout(() => {
-        setBotTyping(false);
-
-        const introText = `Hey ${name}! I'm your personal interview practice assistant.\nI’ll help you strengthen your concepts and prepare confidently across OOPS, OS, DBMS, CN. Shall we get started?`;
-        const botMessage = {
-          id: `bot_${Date.now()}`,
-          role: 'bot',
-          text: introText,
-          createdAt: new Date().toISOString()
-        };
-        setMessages((m) => [...m, botMessage]);
-      }, 800); // typing duration
-    }, 2000); // 2s
-
-    // safety: unmount welcome after animation ends (keep small delay to let transition finish)
-    unmountWelcomeTimeoutRef.current = setTimeout(() => {
-      // keep welcomeVisible false; if you want to unmount entirely you can, but we already set it to false
-      // no-op here; this ref exists for cleanup if needed
-    }, 11000);
+      const introText = `Hey ${userName}! I'm your personal interview practice assistant.\nI’ll help you strengthen your concepts and prepare confidently across OOPS, OS, DBMS, and CN. Shall we get started?`;
+      const botMessage = {
+        id: `bot_${Date.now()}`,
+        role: 'bot',
+        text: introText,
+        createdAt: new Date().toISOString()
+      };
+      setMessages((m) => [...m, botMessage]);
+    }, 1500); // typing duration
   };
 
   // cleanup on unmount
@@ -84,7 +81,7 @@ function App() {
         {/* Render WelcomeHero only while visible. Once false we unmount it. */}
         {welcomeVisible && (
           <div className="content-wrapper">
-            <WelcomeHero userName={userName} />
+            <WelcomeHero userName={userName} onStart={handleStartSession} />
             {/* While welcome is visible we keep the "regular" messages container below the hero */}
             <div ref={messagesRef} className="messages-container" aria-live="polite">
               {messages.map((msg) => (
@@ -118,13 +115,16 @@ function App() {
         )}
 
         {/* ChatInput stays rendered as before (pinned logic still works) */}
-        <ChatInput isPinned={chatPinned} onSend={(text) => {
-          const userMsg = { id: `user_${Date.now()}`, role: 'user', text, createdAt: new Date().toISOString() };
-          setMessages((m) => [...m, userMsg]);
+        {/* ChatInput stays rendered as before (pinned logic still works) */}
+        {chatPinned && (
+          <ChatInput isPinned={chatPinned} onSend={(text) => {
+            const userMsg = { id: `user_${Date.now()}`, role: 'user', text, createdAt: new Date().toISOString() };
+            setMessages((m) => [...m, userMsg]);
 
-          // TODO: send to backend here
-          console.log('USER SEND (TODO: send to backend):', text);
-        }} />
+            // TODO: send to backend here
+            console.log('USER SEND (TODO: send to backend):', text);
+          }} />
+        )}
       </main>
     </div>
   );
