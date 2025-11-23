@@ -13,7 +13,7 @@ def gen_id(prefix: str = "session") -> str:
 class Turn(BaseModel):
     turn_id: str = Field(default_factory=lambda: f"turn_{uuid.uuid4().hex[:8]}")
     q_id: Optional[str] = None
-    turn_type: str = Field(..., regex="^(main|followup)$")
+    turn_type: str = Field(..., pattern="^(main|followup)$")
     q_text: Optional[str] = None
     answer_text: Optional[str] = None
     timestamp: datetime = Field(default_factory=datetime.utcnow)
@@ -22,7 +22,7 @@ class Turn(BaseModel):
     confidence: Optional[float] = None
 
 class SessionModel(BaseModel):
-    _id: str = Field(default_factory=gen_id)
+    id: str = Field(default_factory=gen_id, alias="_id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_activity_at: datetime = Field(default_factory=datetime.utcnow)
     ttl_expires_at: datetime = Field(default_factory=lambda: datetime.utcnow() + timedelta(minutes=SESSION_TTL_MINUTES))
@@ -37,7 +37,7 @@ class SessionModel(BaseModel):
     final_report: Optional[str] = None
 
     def to_bson(self) -> dict:
-        d = self.dict()
+        d = self.model_dump(by_alias=True)
         # Pydantic converts datetimes; safe for pymongo
         return d
 

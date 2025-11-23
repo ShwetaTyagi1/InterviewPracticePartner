@@ -4,10 +4,10 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 class QuestionModel(BaseModel):
-    _id: Optional[str] = None         # you may store a string id like "q_001" or let Mongo generate ObjectId
+    id: Optional[str] = Field(None, alias="_id")         # you may store a string id like "q_001" or let Mongo generate ObjectId
     topic: str
     difficulty: int = Field(..., ge=1, le=5)
-    type: str = Field(..., regex="^(conceptual|code|design)$")
+    type: str = Field(..., pattern="^(conceptual|code|design)$")
     prompt: str
     rubric: List[str] = []
     requires_clarification_allowed: bool = True
@@ -19,7 +19,7 @@ class QuestionModel(BaseModel):
         Convert to a dict suitable for pymongo insertion.
         If _id is None we will omit it (Mongo will create ObjectId).
         """
-        d = self.dict()
+        d = self.model_dump(by_alias=True)
         if d.get("_id") is None:
             d.pop("_id", None)
         return d

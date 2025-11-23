@@ -32,6 +32,9 @@ def create_app():
     app = Flask(__name__)
     app.config["JSON_SORT_KEYS"] = False
 
+    from routes.session_routes import bp as session_bp
+    app.register_blueprint(session_bp, url_prefix="/session")
+
     @app.route("/health", methods=["GET"])
     def health():
         # Basic health check: if mongo_db is available, report DB ok
