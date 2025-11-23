@@ -33,7 +33,10 @@ def create_app():
     app.config["JSON_SORT_KEYS"] = False
 
     from routes.session_routes import bp as session_bp
+    from routes.question_routes import bp as question_bp
+
     app.register_blueprint(session_bp, url_prefix="/session")
+    app.register_blueprint(question_bp, url_prefix="/questions")
 
     @app.route("/health", methods=["GET"])
     def health():

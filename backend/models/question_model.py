@@ -5,8 +5,7 @@ from pydantic import BaseModel, Field
 
 class QuestionModel(BaseModel):
     id: Optional[str] = Field(None, alias="_id")         # you may store a string id like "q_001" or let Mongo generate ObjectId
-    topic: str
-    difficulty: int = Field(..., ge=1, le=5)
+    topic: str = Field(..., pattern="^(OOPS|DBMS|OS|CN)$")
     type: str = Field(..., pattern="^(conceptual|code|design)$")
     prompt: str
     rubric: List[str] = []

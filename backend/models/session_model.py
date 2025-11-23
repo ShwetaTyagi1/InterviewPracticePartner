@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 import uuid
 import os
 
-SESSION_TTL_MINUTES = int(os.getenv("SESSION_TTL_MINUTES", "45"))
+SESSION_TTL_MINUTES = int(os.getenv("SESSION_TTL_MINUTES", "30"))
 
 def gen_id(prefix: str = "session") -> str:
     return f"{prefix}_{uuid.uuid4().hex[:12]}"
