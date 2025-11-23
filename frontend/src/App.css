@@ -247,25 +247,6 @@
   z-index: 20;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  box-sizing: border-box;
-  pointer-events: auto;
-}
-
-/* ensure scrollbar is visible for debugging/dev; browser will style it normally in prod */
-.messages-container.fullscreen::-webkit-scrollbar {
-  width: 10px;
-}
-
-.messages-container.fullscreen::-webkit-scrollbar-thumb {
-  background: rgba(100, 100, 120, 0.35);
-  border-radius: 999px;
-}
-
-/* user bubble alignment � allow user bubble to expand to right edge */
-.message-bubble.user {
-  margin-left: auto;
-  /* push user bubble to the right */
   margin-right: 12px;
   /* breathing room from edge */
   max-width: calc(100% - 48px);
@@ -280,4 +261,15 @@
 .message-bubble {
   display: block;
   /* ensures margin-left: auto works predictably */
+}
+/* Custom scrollbar for fullscreen messages */
+.messages-container.fullscreen::-webkit-scrollbar {
+  width: 12px;
+}
+
+.messages-container.fullscreen::-webkit-scrollbar-thumb {
+  background-color: rgba(14, 11, 42, 0.35);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
 }

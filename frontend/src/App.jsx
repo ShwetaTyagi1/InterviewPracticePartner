@@ -62,7 +62,7 @@ function App() {
         createdAt: new Date().toISOString()
       };
       setMessages((m) => [...m, botMessage]);
-    }, 800); // typing duration
+    }, 1500); // typing duration
   };
 
   // cleanup on unmount
