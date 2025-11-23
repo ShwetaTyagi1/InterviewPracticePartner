@@ -67,11 +67,175 @@
   z-index: 1;
 }
 
-.content-wrapper {
+
+
+/* simple messages area that sits above the input */
+.messages-container {
   width: 100%;
   max-width: 900px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  padding-bottom: 12px;
+  transition: margin-bottom 420ms ease;
+  min-height: 40px;
+
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding-right: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+
+
+/* message bubble */
+.message-bubble {
+  max-width: 78%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  font-size: 0.95rem;
+  color: var(--color-text-main);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+/* bot vs user look */
+.message-bubble.bot {
+  align-self: flex-start;
+  background: linear-gradient(180deg, rgba(26, 26, 36, 0.9), rgba(20, 20, 28, 0.9));
+  border: 1px solid rgba(99, 102, 241, 0.12);
+  box-shadow: 0 6px 18px rgba(10, 10, 15, 0.45);
+}
+
+.message-bubble.user {
+  align-self: flex-end;
+  background: linear-gradient(180deg, rgba(45, 45, 55, 0.9), rgba(38, 38, 48, 0.9));
+  border: 1px solid var(--color-border-light);
+
+}
+
+/* typing indicator style */
+.message-bubble.bot.typing {
+  font-style: italic;
+  opacity: 0.85;
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.06), rgba(26, 26, 36, 0.9));
+  border: 1px dashed rgba(99, 102, 241, 0.12);
+}
+
+/* Make content-wrapper a column that can allocate space to messages */
+.content-wrapper {
+  display: flex;
+  flex-direction: column;
   gap: var(--spacing-2xl);
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  /* crucial: allow the wrapper to take available vertical space */
+  height: calc(100vh - 120px);
+  /* leave some room for header/padding; adjust if you have header */
+  padding-top: 24px;
+  padding-left: 16px;
+  padding-right: 16px;
+  box-sizing: border-box;
+  transition: padding-bottom 420ms ease;
+}
+
+/* When input is pinned, provide extra bottom padding so messages don't hide behind the fixed input */
+.content-wrapper.pinned-with-input {
+  padding-bottom: 150px;
+  /* at least the height of the pinned input + margin; adjust if you change input height */
+}
+
+
+
+/* Optional: keep the messages container visually separate */
+.messages-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+/* ---------- Chat area expansion & spacing ---------- */
+
+/* Base content-wrapper (keeps existing behaviour) */
+.content-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xl);
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  /* initial conservative height so welcome hero sits nicely above messages */
+  height: calc(100vh - 120px);
+  padding-top: 24px;
+  padding-left: 20px;
+  padding-right: 20px;
+  box-sizing: border-box;
+  transition: height 420ms ease, padding 420ms ease;
+}
+
+/* When the welcome hero is hidden (we expand chat to near-top) */
+.content-wrapper.welcome-hidden {
+  /* expand the wrapper so messages area can stretch from near top to above chat input */
+  height: 100vh;
+  /* almost full viewport height - leaves small top margin */
+
+  padding-top: 28px;
+  padding-left: 28px;
+  padding-right: 28px;
+
+}
+
+/* When input pinned, provide room at the bottom, so last message isn't hidden */
+.content-wrapper.pinned-with-input {
+  padding-bottom: 160px;
+  /* adjust if your chat input height changes */
+}
+
+/* messages container should take available space and be scrollable */
+.messages-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1 1 auto;
+  /* grow to fill wrapper's available height */
+  overflow-y: auto;
+  padding: 18px;
+  /* inner breathing room so messages never hug edges */
+  border-radius: 12px;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* slightly larger bubbles for better reading; prevents tiny message area feel */
+.message-bubble {
+  max-width: 78%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+  font-size: 1rem;
+  color: var(--color-text-main);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+/* bot vs user look */
+.message-bubble.bot {
+  align-self: flex-start;
+  background: linear-gradient(180deg, rgba(26, 26, 36, 0.95), rgba(20, 20, 28, 0.95));
+  border: 1px solid rgba(99, 102, 241, 0.08);
+}
+
+.message-bubble.user {
+  align-self: flex-end;
+  background: linear-gradient(180deg, rgba(45, 45, 55, 0.95), rgba(38, 38, 48, 0.95));
+  border: 1px solid var(--color-border-light);
+}
+
+/* typing indicator style */
+.message-bubble.bot.typing {
+  font-style: italic;
+  opacity: 0.9;
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.06), rgba(26, 26, 36, 0.95));
+  border: 1px dashed rgba(99, 102, 241, 0.08);
 }

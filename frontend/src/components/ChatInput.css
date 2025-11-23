@@ -3,6 +3,8 @@
     max-width: 800px;
     margin: 0 auto;
     position: relative;
+    transition: all 420ms cubic-bezier(.2, .9, .2, 1);
+    z-index: 60;
 }
 
 .chat-input-wrapper {
@@ -109,6 +111,48 @@
     background: var(--color-primary);
     color: white;
     box-shadow: var(--shadow-glow);
+}
+
+hat-input-container.pinned {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    bottom: 24px;
+    /* final pinned bottom spacing */
+    z-index: 60;
+    width: calc(100% - 48px);
+    max-width: 920px;
+    transition: transform 420ms cubic-bezier(.2, .9, .2, 1), bottom 420ms cubic-bezier(.2, .9, .2, 1), box-shadow 300ms;
+    /* give it a slightly elevated look when pinned */
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.55);
+}
+
+/* subtle transform animation to appear to slide up into pinned position */
+.chat-input-container.pinned .chat-input-wrapper {
+    transform: translateY(0);
+
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+}
+
+
+
+
+
+/* Pinned state: fixed at bottom; ensure height is consistent */
+.chat-input-container.pinned {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    bottom: 24px;
+    z-index: 60;
+    width: calc(100% - 48px);
+    max-width: 920px;
+    transition: transform 420ms cubic-bezier(.2, .9, .2, 1), bottom 420ms cubic-bezier(.2, .9, .2, 1), box-shadow 300ms;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.55);
+    /* enforce container height to avoid layout collapse */
+    min-height: 64px;
 }
 
 @keyframes slideIn {

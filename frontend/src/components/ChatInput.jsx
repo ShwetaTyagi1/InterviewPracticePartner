@@ -2,19 +2,21 @@ import React, { useState } from 'react';
 import { Mic, Send, Image as ImageIcon, Upload } from 'lucide-react';
 import './ChatInput.css';
 
-const ChatInput = () => {
+const ChatInput = ({ isPinned = false, onSend = () => { } }) => {
+
     const [inputText, setInputText] = useState('');
 
     const handleSubmit = (e) => {
         e.preventDefault();
         if (inputText.trim()) {
-            console.log('Sending:', inputText);
+            onSend(inputText.trim());
             setInputText('');
         }
     };
 
     return (
-        <div className="chat-input-container">
+        // add pinned class when requested
+        <div className={`chat-input-container ${isPinned ? 'pinned' : ''}`}>
             <form className="chat-input-wrapper" onSubmit={handleSubmit}>
                 <div className="input-actions-left">
                     <button type="button" className="icon-button" title="Upload File">
