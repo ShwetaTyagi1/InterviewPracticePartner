@@ -61,7 +61,7 @@ def interact():
                 }), 200
             except Exception as e:
                 logger.exception("Failed to start question for session: %s", e)
-                return jsonify({"reply": "Sorry — failed to fetch a question. Try again later."}), 200
+                return jsonify({"reply": "Sorry, failed to fetch a question. Try again later."}), 200
 
         if intent == "clarify_question":
             # the frontend message is the user's clarify request
@@ -70,7 +70,7 @@ def interact():
                 return jsonify({"reply": clarification_reply}), 200
             except Exception as e:
                 logger.exception("Clarify service error: %s", e)
-                return jsonify({"reply": "Sorry — could not produce clarification right now."}), 200
+                return jsonify({"reply": "Sorry, I could not produce clarification right now."}), 200
 
         if intent == "answer":
             routing = route_answer_for_session(message)
@@ -80,18 +80,18 @@ def interact():
                 if handler == "check_main_answer":
                     eval_res = check_main_answer(message)
                     # You requested a specific reply text:
-                    return jsonify({"reply": "Okay — I have evaluated the answer and let's move on to the follow up question."}), 200
+                    return jsonify({"reply": "Okay, I have evaluated the answer and let's move on to the follow up question."}), 200
 
                 elif handler == "check_followup_answer":
                     eval_res = check_followup_answer(message)
-                    return jsonify({"reply": "Okay — I have evaluated the answer, let's move on to the next question."}), 200
+                    return jsonify({"reply": "Okay, I have evaluated the answer, let's move on to the next question."}), 200
 
                 else:
                     return jsonify({"reply": "No active question to evaluate. Say 'I'm ready' to begin."}), 200
 
             except Exception as e:
                 logger.exception("Error evaluating answer: %s", e)
-                return jsonify({"reply": "Sorry — I couldn't evaluate the answer right now."}), 200
+                return jsonify({"reply": "Sorry, I couldn't evaluate the answer right now."}), 200
 
         # Placeholder for other intents (to be implemented)
         reply = f"(placeholder) Detected intent: {intent}"
@@ -100,5 +100,5 @@ def interact():
     except Exception as e:
         logger.exception("Error in /interact: %s", e)
         return jsonify({
-            "reply": "Sorry — something went wrong while processing your request."
+            "reply": "Sorry, something went wrong while processing your request."
         }), 200
