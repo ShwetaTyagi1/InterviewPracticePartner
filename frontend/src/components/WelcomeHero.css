@@ -1,0 +1,45 @@
+.welcome-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin-bottom: 3rem;
+    animation: fadeIn 0.8s ease-out;
+}
+
+.greeting-text {
+    font-size: 3.5rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--spacing-sm);
+    color: #c4c7c5;
+    /* Muted gray for the "Hello" part */
+}
+
+.greeting-gradient {
+    background: linear-gradient(to right, #4285f4, #d96570);
+    /* Gemini-ish gradient */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+}
+
+.sub-text {
+    font-size: 1.5rem;
+    color: var(--color-text-secondary);
+    font-weight: 400;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
