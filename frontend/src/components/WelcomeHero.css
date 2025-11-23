@@ -4,42 +4,64 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    margin-bottom: 3rem;
+    margin-bottom: 2rem;
     animation: fadeIn 0.8s ease-out;
 }
 
 .greeting-text {
-    font-size: 3.5rem;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    margin-bottom: var(--spacing-sm);
-    color: #c4c7c5;
-    /* Muted gray for the "Hello" part */
+    font-size: 4rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-bottom: var(--spacing-md);
+    line-height: 1.45;
 }
 
 .greeting-gradient {
-    background: linear-gradient(to right, #4285f4, #d96570);
-    /* Gemini-ish gradient */
+    background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     color: transparent;
+    position: relative;
+    display: inline-block;
+}
+
+/* Subtle glow effect */
+.greeting-gradient::after {
+    content: attr(data-text);
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: -1;
+    filter: blur(20px);
+    opacity: 0.5;
 }
 
 .sub-text {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     color: var(--color-text-secondary);
     font-weight: 400;
+    letter-spacing: -0.01em;
 }
 
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(20px);
     }
 
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+@media (max-width: 768px) {
+    .greeting-text {
+        font-size: 2.5rem;
+    }
+
+    .sub-text {
+        font-size: 1rem;
     }
 }

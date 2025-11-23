@@ -6,21 +6,51 @@
 }
 
 .chat-input-wrapper {
-    background-color: #f0f4f9;
-    /* Light gray background like Gemini */
+    background: var(--color-surface);
     border-radius: var(--radius-full);
-    padding: var(--spacing-sm) var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-lg);
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
-    transition: all 0.2s ease;
-    border: 1px solid transparent;
+    gap: var(--spacing-md);
+    transition: all 0.3s ease;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-md);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Subtle gradient border effect on focus */
+.chat-input-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-full);
+    padding: 1px;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent-purple));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
 }
 
 .chat-input-wrapper:focus-within {
-    background-color: var(--color-surface);
-    box-shadow: var(--shadow-md);
-    border-color: var(--color-border);
+    background: var(--color-surface-hover);
+    border-color: transparent;
+    box-shadow: var(--shadow-lg), var(--shadow-glow);
+}
+
+.chat-input-wrapper:focus-within::before {
+    opacity: 1;
+}
+
+.input-actions-left,
+.input-actions-right {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
 }
 
 .chat-text-input {
@@ -28,39 +58,67 @@
     border: none;
     background: transparent;
     font-size: 1rem;
-    padding: var(--spacing-xs);
+    padding: var(--spacing-sm);
     color: var(--color-text-main);
     outline: none;
 }
 
 .chat-text-input::placeholder {
-    color: var(--color-text-secondary);
+    color: var(--color-text-tertiary);
 }
 
 .icon-button {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: var(--spacing-xs);
+    padding: var(--spacing-sm);
     border-radius: 50%;
-    color: var(--color-text-main);
-    transition: background-color 0.2s;
+    color: var(--color-text-secondary);
+    transition: all 0.2s ease;
+    position: relative;
 }
 
 .icon-button:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: var(--color-surface-hover);
+    color: var(--color-text-main);
+    transform: scale(1.05);
 }
 
 .icon-circle {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    background-color: #e2e8f0;
+    background: linear-gradient(135deg, var(--color-surface-hover), var(--color-border));
+    transition: all 0.2s ease;
+}
+
+.icon-button:hover .icon-circle {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent-purple));
+    box-shadow: var(--shadow-glow);
 }
 
 .send-button {
     color: var(--color-primary);
+    animation: slideIn 0.2s ease-out;
+}
+
+.send-button:hover {
+    background: var(--color-primary);
+    color: white;
+    box-shadow: var(--shadow-glow);
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }

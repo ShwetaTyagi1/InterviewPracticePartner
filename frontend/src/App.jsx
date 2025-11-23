@@ -15,10 +15,10 @@ function App() {
     <div className="app-container">
       {!userName && <NameDialog onNameSubmit={handleNameSubmit} />}
 
-      <header className="app-header">
-        <div className="logo">PrepPanda</div>
-        {/* Add user profile or other header items here */}
-      </header>
+      {/*<header className="app-header">
+        <div className="logo">PrepPand</div>
+       
+      </header>*/}
 
       <main className="main-content">
         <div className="content-wrapper">

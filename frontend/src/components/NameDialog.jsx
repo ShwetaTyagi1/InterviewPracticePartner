@@ -14,7 +14,7 @@ const NameDialog = ({ onNameSubmit }) => {
     return (
         <div className="dialog-overlay">
             <div className="dialog-box">
-                <h2 className="dialog-title">Welcome to PrepPanda!</h2>
+                <h2 className="dialog-title">Welcome to IntervueX!</h2>
                 <p className="dialog-subtitle">Let's get started with your interview practice</p>
 
                 <form onSubmit={handleSubmit}>
@@ -22,13 +22,12 @@ const NameDialog = ({ onNameSubmit }) => {
                         type="text"
                         className="name-input"
                         placeholder="Enter your name"
-                        //value={name}
+                        value={name}
                         onChange={(e) => {
                             const value = e.target.value;
                             if (/^[A-Za-z\s]*$/.test(value)) {
                                 setName(value);
                             }
-
                         }}
                         autoFocus
                     />
