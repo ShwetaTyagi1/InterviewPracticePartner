@@ -236,7 +236,7 @@
   max-height: calc(100vh - 120px);
   height: calc(100vh - 120px);
 
-  padding: 20px 24px 16px 24px;
+  padding: 20px 24px 16px 0px;
   overflow-y: auto;
   /* enable vertical scrolling */
   overscroll-behavior: contain;
@@ -262,6 +262,7 @@
   display: block;
   /* ensures margin-left: auto works predictably */
 }
+
 /* Custom scrollbar for fullscreen messages */
 .messages-container.fullscreen::-webkit-scrollbar {
   width: 12px;
