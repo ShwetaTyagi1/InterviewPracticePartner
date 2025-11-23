@@ -34,9 +34,11 @@ def create_app():
 
     from routes.session_routes import bp as session_bp
     from routes.question_routes import bp as question_bp
+    from routes.interaction_routes import bp as interaction_bp
 
     app.register_blueprint(session_bp, url_prefix="/session")
     app.register_blueprint(question_bp, url_prefix="/questions")
+    app.register_blueprint(interaction_bp, url_prefix="/interaction")
 
     @app.route("/health", methods=["GET"])
     def health():
