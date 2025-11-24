@@ -1,15 +1,4 @@
 # services/session_service.py
-"""
-Session service - provides:
-- session lifecycle: create_session, delete_all_sessions, get_session, touch_session
-- single-session helpers: _get_single_session_doc, _ensure_session_exists
-- question flow: start_question_for_session
-- answer routing: route_answer_for_session
-- answer evaluation: _evaluate_answer_with_gemini, check_main_answer, check_followup_answer
-
-Note: This file uses the Google GenAI SDK via services.gemini_client.call_gemini.
-"""
-
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from pymongo.collection import Collection
@@ -29,7 +18,6 @@ logger = logging.getLogger(__name__)
 from os import getenv
 SESSION_TTL_MINUTES = int(getenv("SESSION_TTL_MINUTES", "30"))
 
-
 # --- collection helper ---
 def _sessions_collection() -> Collection:
     return db.get_collection("sessions")
@@ -43,30 +31,17 @@ def create_session(target_role: Optional[str] = None, experience_level: Optional
     Create a new session document and insert it into MongoDB.
     Returns the inserted session document as a plain dict (BSON-like).
     """
-    # Instantiate a Pydantic SessionModel (gives defaults and timestamps)
     session = SessionModel.new_session(target_role=target_role, experience_level=experience_level)
-
-    # Ensure TTL is set/updated
     session.ttl_expires_at = datetime.utcnow() + timedelta(minutes=SESSION_TTL_MINUTES)
     session.last_activity_at = datetime.utcnow()
-
-    # Convert to dict for Mongo insertion
     session_doc = session.to_bson()
-
     col = _sessions_collection()
     res = col.insert_one(session_doc)
     logger.info("Created new session with id=%s (inserted_id=%s)", session_doc.get("_id"), res.inserted_id)
-
-    # Return the stored session as a Python dict
     return session_doc
 
 
 def delete_all_sessions() -> int:
-    """
-    Delete all session documents. Returns the count of deleted documents.
-    Useful because your app is single-user and wants to clear sessions
-    when the base URL is visited.
-    """
     col = _sessions_collection()
     result = col.delete_many({})
     logger.info("Deleted %d sessions from sessions collection.", result.deleted_count)
@@ -74,20 +49,12 @@ def delete_all_sessions() -> int:
 
 
 def get_session(session_id: str) -> Optional[Dict[str, Any]]:
-    """
-    Fetch a session by its _id field (session._id).
-    Returns None if not found.
-    """
     col = _sessions_collection()
     doc = col.find_one({"_id": session_id})
     return doc
 
 
 def touch_session(session_id: str) -> bool:
-    """
-    Update last_activity_at and extend ttl_expires_at for the given session.
-    Returns True if the session was found and updated, False otherwise.
-    """
     col = _sessions_collection()
     new_ttl = datetime.utcnow() + timedelta(minutes=SESSION_TTL_MINUTES)
     result = col.update_one(
@@ -101,22 +68,14 @@ def touch_session(session_id: str) -> bool:
 # Single-session helpers
 # -------------------------
 def _get_single_session_doc() -> Optional[Dict[str, Any]]:
-    """
-    Return the single (most recent) session document, or None if none exists.
-    """
     col = _sessions_collection()
     return col.find_one(sort=[("created_at", -1)])
 
 
 def _ensure_session_exists() -> Dict[str, Any]:
-    """
-    Ensure there is a session document. If none exists, create a fresh one.
-    Returns the session document (as stored in Mongo).
-    """
     sessions = _sessions_collection()
     session = _get_single_session_doc()
     if session:
-        # Touch/extend TTL on reuse
         try:
             session_id = session["_id"]
             touch_session(session_id)
@@ -124,23 +83,16 @@ def _ensure_session_exists() -> Dict[str, Any]:
             pass
         return session
 
-    # Create new session document using Pydantic helper
     new_session = SessionModel.new_session()
-    # set TTL and timestamps explicitly
     new_session.ttl_expires_at = datetime.utcnow() + timedelta(minutes=SESSION_TTL_MINUTES)
     new_session.last_activity_at = datetime.utcnow()
     doc = new_session.to_bson()
     res = sessions.insert_one(doc)
     logger.info("Inserted new single session (inserted_id=%s)", res.inserted_id)
-    # Return freshly inserted doc (with _id from doc)
     return doc
 
 
 def _pick_random_question() -> Optional[Dict[str, Any]]:
-    """
-    Pick a random question document from the questions collection using $sample.
-    Returns the question doc or None if the collection is empty.
-    """
     qcol = db.get_collection("questions")
     cursor = qcol.aggregate([{"$sample": {"size": 1}}])
     try:
@@ -154,42 +106,33 @@ def _pick_random_question() -> Optional[Dict[str, Any]]:
 # Business: start a question for session
 # -------------------------
 def start_question_for_session() -> Dict[str, Any]:
-    """
-    Pick a random question, store it as the current_question in the single session,
-    and return the question prompt + rubric + q_id to be sent to the frontend.
-
-    Returns dict: { "reply": str, "question": str, "rubric": [str], "q_id": str }
-    Raises RuntimeError if no questions are available.
-    """
     sessions_col = _sessions_collection()
     questions_col = db.get_collection("questions")
 
-    # Ensure a session exists
     session = _ensure_session_exists()
     session_id = session.get("_id")
 
-    # Pick a random question
     question = _pick_random_question()
     if not question:
         logger.error("No questions found in questions collection.")
         raise RuntimeError("No questions available in the question bank.")
 
-    # Build current_question payload
     q_id = str(question.get("_id"))
     prompt_text = question.get("prompt", "")
     rubric = question.get("rubric", []) or []
     q_type = question.get("type", "conceptual")
+    topic = question.get("topic")
 
     current_question = {
         "q_id": q_id,
         "prompt": prompt_text,
         "rubric": rubric,
         "type": q_type,
-        "turn_type": "main",     # starts as the main question
+        "topic": topic,
+        "turn_type": "main",
         "assigned_at": datetime.utcnow()
     }
 
-    # Create a new Turn entry to track this question being asked
     turn_doc = {
         "turn_id": f"turn_{uuid.uuid4().hex[:8]}",
         "q_id": q_id,
@@ -197,12 +140,9 @@ def start_question_for_session() -> Dict[str, Any]:
         "q_text": prompt_text,
         "answer_text": None,
         "timestamp": datetime.utcnow(),
-        "feedback": None,
-        "classification": None,
-        "confidence": None
+        "feedback": None
     }
 
-    # Update session in DB: set current_question, push to turns, append question_asked, update timestamps
     update_ops = {
         "$set": {
             "current_question": current_question,
@@ -216,9 +156,8 @@ def start_question_for_session() -> Dict[str, Any]:
 
     sessions_col.update_one({"_id": session_id}, update_ops)
 
-    # Optionally return an updated session doc (new current_question) - but return minimal payload for frontend.
     return {
-        "reply": prompt_text,   # the text to show the user (question prompt)
+        "reply": prompt_text,
         "question": prompt_text,
         "rubric": rubric,
         "q_id": q_id
@@ -229,24 +168,6 @@ def start_question_for_session() -> Dict[str, Any]:
 # Answer routing helper (in-session)
 # -------------------------
 def route_answer_for_session(user_answer: str) -> Dict[str, Any]:
-    """
-    Inspect the single session's current_question and return a routing dict indicating
-    whether this user_answer should be handled by the main-answer handler or the
-    followup-answer handler.
-
-    Assumptions: per your instruction, a question is guaranteed to have been asked previously,
-    so current_question exists and has a valid turn_type ("main" or "followup").
-
-    Returns a dict:
-    {
-        "handler": "check_main_answer" | "check_followup_answer",
-        "q_type": "main" | "followup",
-        "q_id": "<question id>",
-        "question_text": "<prompt text>",
-        "session_id": "<session _id>",
-        "user_answer": "<user_answer>",
-    }
-    """
     session = _get_single_session_doc()
     if not session:
         logger.error("route_answer_for_session called but no active session found.")
@@ -262,7 +183,6 @@ def route_answer_for_session(user_answer: str) -> Dict[str, Any]:
     session_id = session.get("_id")
     current_q = session.get("current_question", {})
 
-    # Per guarantee, current_q exists and has turn_type
     turn_type = current_q.get("turn_type")
     q_id = current_q.get("q_id")
     q_text = current_q.get("prompt") or current_q.get("q_text") or ""
@@ -314,25 +234,19 @@ Rubric:
 
 Candidate answer:
 \"\"\"{candidate_answer}\"\"\"
+
 """
 
 
 def _evaluate_answer_with_gemini(question_text: str, rubric: List[str], candidate_answer: str) -> Dict[str, Any]:
-    """
-    Call Gemini to evaluate the candidate's answer. Returns dict with keys:
-    - feedback (str)
-    - classification (str) in {"correct","somewhat_correct","wrong"}
-    - confidence (float)
-    If LLM fails or returns invalid output, returns a conservative fallback.
-    """
     prompt = EVAL_PROMPT_TEMPLATE.format(
         question_text=question_text.replace('"', '\\"'),
         rubric_json=json.dumps(rubric or []),
-        candidate_answer=candidate_answer.replace('"', '\\"'),
+        candidate_answer=candidate_answer.replace('"', '\\"')
     )
 
     try:
-        raw = call_gemini(prompt=prompt, model="gemini-2.0-flash", max_tokens=400, temperature=0.0)
+        raw = call_gemini(prompt=prompt, model="gemini-2.5-pro", max_tokens=400, temperature=0.0)
     except Exception as e:
         logger.exception("Gemini evaluation call failed: %s", e)
         return {
@@ -341,12 +255,10 @@ def _evaluate_answer_with_gemini(question_text: str, rubric: List[str], candidat
             "confidence": 0.0
         }
 
-    # Parse JSON strictly; try substring extraction if needed
     parsed = None
     try:
         parsed = json.loads(raw)
     except Exception:
-        # try to extract JSON substring
         try:
             start = raw.find("{")
             end = raw.rfind("}") + 1
@@ -359,17 +271,14 @@ def _evaluate_answer_with_gemini(question_text: str, rubric: List[str], candidat
                 "confidence": 0.0
             }
 
-    # Validate fields
     feedback = parsed.get("feedback", "").strip() if isinstance(parsed.get("feedback", ""), str) else str(parsed.get("feedback", ""))
     classification = parsed.get("classification", "")
     confidence = parsed.get("confidence", 0.0)
 
-    # Normalize and validate classification
     if classification not in ("correct", "somewhat_correct", "wrong"):
         logger.warning("Unexpected classification from Gemini: %s", classification)
         classification = "somewhat_correct"
 
-    # Coerce confidence to float and clamp
     try:
         confidence = float(confidence)
     except Exception:
@@ -395,11 +304,6 @@ def _update_session_doc(session_id: str, new_doc: Dict[str, Any]) -> None:
 # Public functions to check answers and update session
 # -------------------------
 def check_main_answer(user_answer: str) -> Dict[str, Any]:
-    """
-    Evaluate the user's answer for the current MAIN question, update the last turn and session,
-    set current_question.turn_type to 'followup', and increment main_questions_answered.
-    Returns the evaluation dict returned by the LLM.
-    """
     session = _get_single_session_doc()
     if not session:
         raise RuntimeError("No active session")
@@ -409,13 +313,10 @@ def check_main_answer(user_answer: str) -> Dict[str, Any]:
     question_text = current_q.get("prompt", "")
     rubric = current_q.get("rubric", []) or []
 
-    # Evaluate via Gemini
     evaluation = _evaluate_answer_with_gemini(question_text=question_text, rubric=rubric, candidate_answer=user_answer)
 
-    # Update last turn in session.turns (update the last element)
     turns = session.get("turns", []) or []
     if not turns:
-        # Defensive: if no turn exists, create one
         turn = {
             "turn_id": f"turn_{uuid.uuid4().hex[:8]}",
             "q_id": current_q.get("q_id"),
@@ -433,24 +334,17 @@ def check_main_answer(user_answer: str) -> Dict[str, Any]:
         last_turn["feedback"] = evaluation
         turns[-1] = last_turn
 
-    # Update session fields: set current_question.turn_type -> followup; increment main_questions_answered
     session["turns"] = turns
     session["current_question"]["turn_type"] = "followup"
     session["main_questions_answered"] = int(session.get("main_questions_answered", 0)) + 1
     session["last_activity_at"] = datetime.utcnow()
 
-    # Persist by replacing document (single-user app; this is acceptable)
     _update_session_doc(session_id, session)
 
     return evaluation
 
 
 def check_followup_answer(user_answer: str) -> Dict[str, Any]:
-    """
-    Evaluate the user's answer for the current FOLLOWUP question, update the last turn and session,
-    clear current_question and increment followups_answered.
-    Returns the evaluation dict returned by the LLM.
-    """
     session = _get_single_session_doc()
     if not session:
         raise RuntimeError("No active session")
@@ -460,10 +354,8 @@ def check_followup_answer(user_answer: str) -> Dict[str, Any]:
     question_text = current_q.get("prompt", "")
     rubric = current_q.get("rubric", []) or []
 
-    # Evaluate via Gemini
     evaluation = _evaluate_answer_with_gemini(question_text=question_text, rubric=rubric, candidate_answer=user_answer)
 
-    # Update last turn
     turns = session.get("turns", []) or []
     if not turns:
         turn = {
@@ -480,11 +372,9 @@ def check_followup_answer(user_answer: str) -> Dict[str, Any]:
         last_turn = turns[-1]
         last_turn["answer_text"] = user_answer
         last_turn["timestamp"] = datetime.utcnow()
-        # For followup, we might append feedback or merge it; here we replace feedback fields
         last_turn["feedback"] = evaluation
         turns[-1] = last_turn
 
-    # Update session: clear current_question and increment followups_answered
     session["turns"] = turns
     session["current_question"] = None
     session["followups_answered"] = int(session.get("followups_answered", 0)) + 1
@@ -493,3 +383,425 @@ def check_followup_answer(user_answer: str) -> Dict[str, Any]:
     _update_session_doc(session_id, session)
 
     return evaluation
+
+
+# -------------------------
+# Follow-up generation & positive-ready handler
+# -------------------------
+FOLLOWUP_GEN_PROMPT = """
+You are a helpful technical-interview assistant that generates a single FOLLOW-UP interview question
+based on a previously asked question. Return ONLY a JSON object (no surrounding text) with exactly the fields:
+
+{{
+  "topic": "<one of: OOPS|DBMS|OS|CN>",
+  "type": "<one of: conceptual|code|design>",
+  "prompt": "<the follow-up question prompt text>",
+  "rubric": ["<short rubric bullet 1>", "<rubric bullet 2>", ...],
+  "requires_clarification_allowed": true,
+  "requires_llm": true
+}}
+
+Constraints:
+- The follow-up must be tightly related to the original question and probe deeper into one sub-area.
+- Do NOT include the solution or hints.
+- Keep prompt length reasonable (1-3 sentences).
+- topic should match the original question's topic.
+- type should be consistent with original question (prefer same type).
+
+Context:
+Original question:
+\"\"\"{orig_question}\"\"\"
+
+Original rubric:
+{orig_rubric}
+
+"""
+
+def generate_followup_question(orig_question: str, orig_rubric: List[str], orig_topic: Optional[str], orig_type: Optional[str]) -> Dict[str, Any]:
+    """
+    Generate a follow-up question JSON via Gemini.
+    Returns a dict matching QuestionModel-like fields.
+
+    Raises RuntimeError with clear message on failure.
+    """
+    prompt = FOLLOWUP_GEN_PROMPT.format(
+        orig_question=orig_question.replace('"', '\\"'),
+        orig_rubric=json.dumps(orig_rubric or []),
+    )
+
+    try:
+        raw = call_gemini(prompt=prompt, model="gemini-2.5-pro", max_tokens=300, temperature=0.0)
+    except Exception as e:
+        logger.exception("Failed to call Gemini for followup generation: %s", e)
+        raise RuntimeError("Follow-up generation failed (LLM call)")
+
+    # Normalize raw to string
+    raw_text = "" if raw is None else str(raw).strip()
+
+    # Try direct parse, otherwise try to extract substring between first { and last }
+    parsed = None
+    if not raw_text:
+        logger.error("Empty response from Gemini while generating follow-up.")
+        raise RuntimeError("Follow-up generation returned empty response")
+
+    # Attempt to parse JSON-safe substring(s)
+    parse_errors = []
+    try:
+        parsed = json.loads(raw_text)
+    except Exception as e:
+        parse_errors.append(str(e))
+        # attempt to find first JSON object in the text
+        start = raw_text.find("{")
+        end = raw_text.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            candidate = raw_text[start:end+1]
+            try:
+                parsed = json.loads(candidate)
+            except Exception as e2:
+                parse_errors.append(str(e2))
+
+    if not parsed or not isinstance(parsed, dict):
+        logger.exception("Failed to parse followup JSON. raw=%s parse_errors=%s", raw_text, parse_errors)
+        raise RuntimeError("Follow-up generation returned invalid JSON")
+
+    # Validate required fields
+    topic = parsed.get("topic")
+    qtype = parsed.get("type")
+    prompt_text = parsed.get("prompt")
+    rubric = parsed.get("rubric", [])
+
+    if not (topic and qtype and prompt_text):
+        logger.error("Followup JSON missing required fields: %s", parsed)
+        raise RuntimeError("Invalid follow-up JSON from model: missing required fields")
+
+    # Enforce allowed enums (fall back to original when invalid)
+    if topic not in ("OOPS", "DBMS", "OS", "CN"):
+        topic = orig_topic or topic
+    if qtype not in ("conceptual", "code", "design"):
+        qtype = orig_type or qtype
+
+    followup = {
+        "_id": f"generated_{uuid.uuid4().hex[:8]}",
+        "topic": topic,
+        "type": qtype,
+        "prompt": prompt_text,
+        "rubric": rubric,
+        "requires_clarification_allowed": bool(parsed.get("requires_clarification_allowed", True)),
+        "requires_llm": bool(parsed.get("requires_llm", True)),
+        "created_at": datetime.utcnow()
+    }
+    return followup
+
+
+def handle_positive_ready() -> Dict[str, Any]:
+    """
+    Handles 'positive_ready' intent per rules:
+    - if no session/current_question -> start a main question
+    - if current is followup:
+        - if last turn is MAIN and has answer_text -> generate follow-up (user answered main)
+        - if last turn is FOLLOWUP and has answer_text -> move to next main (followup answered)
+        - else -> ask user to answer the current question first
+    - if current is main:
+        - if last turn has no answer_text -> ask to answer
+        - if last turn has answer_text -> generate follow-up
+    """
+    try:
+        session = _get_single_session_doc()
+        if not session:
+            return start_question_for_session()
+
+        current_q = session.get("current_question")
+        turns = session.get("turns", []) or []
+        last_turn = turns[-1] if turns else None
+
+        # If there's no current question, start a main
+        if not current_q:
+            return start_question_for_session()
+
+        turn_type = current_q.get("turn_type")
+        last_has_answer = bool(last_turn and last_turn.get("answer_text"))
+        last_turn_type = last_turn.get("turn_type") if last_turn else None
+
+        # CASE: current is followup
+        if turn_type == "followup":
+            # If the last turn was the MAIN question and it has an answer -> user answered main; generate followup
+            if last_turn_type == "main" and last_has_answer:
+                # generate followup based on the main that was answered
+                orig_question_text = current_q.get("prompt", "")
+                orig_rubric = current_q.get("rubric", []) or []
+                orig_topic = current_q.get("topic")
+                orig_type = current_q.get("type")
+
+                try:
+                    followup = generate_followup_question(
+                        orig_question=orig_question_text,
+                        orig_rubric=orig_rubric,
+                        orig_topic=orig_topic,
+                        orig_type=orig_type
+                    )
+                except Exception as e:
+                    logger.exception("generate_followup_question failed: %s", e)
+                    return {"reply": "Sorry — failed to generate a follow-up question. Try again later."}
+
+                session_id = session.get("_id")
+                followup_qid = str(followup.get("_id"))
+                current_question = {
+                    "q_id": followup_qid,
+                    "prompt": followup.get("prompt"),
+                    "rubric": followup.get("rubric", []),
+                    "type": followup.get("type"),
+                    "topic": followup.get("topic"),
+                    "turn_type": "followup",
+                    "assigned_at": datetime.utcnow()
+                }
+
+                followup_turn = {
+                    "turn_id": f"turn_{uuid.uuid4().hex[:8]}",
+                    "q_id": followup_qid,
+                    "turn_type": "followup",
+                    "q_text": followup.get("prompt"),
+                    "answer_text": None,
+                    "timestamp": datetime.utcnow(),
+                    "feedback": None
+                }
+
+                _sessions_collection().update_one(
+                    {"_id": session_id},
+                    {
+                        "$set": {"current_question": current_question, "last_activity_at": datetime.utcnow()},
+                        "$push": {"turns": followup_turn}
+                    }
+                )
+
+                return {
+                    "reply": followup.get("prompt"),
+                    "question": followup.get("prompt"),
+                    "rubric": followup.get("rubric", []),
+                    "q_id": followup_qid
+                }
+
+            # If the last turn was a FOLLOWUP and it has an answer -> move to next main
+            if last_turn_type == "followup" and last_has_answer:
+                return start_question_for_session()
+
+            # Otherwise no answer yet for the relevant turn
+            return {"reply": "Please answer the current question first before moving on."}
+
+        # CASE: current is main
+        if turn_type == "main":
+            # If main hasn't been answered yet
+            if not last_has_answer:
+                return {"reply": "Please answer the current question first before I generate a follow-up."}
+
+            # Main answered -> generate follow-up (same as above)
+            orig_question_text = current_q.get("prompt", "")
+            orig_rubric = current_q.get("rubric", []) or []
+            orig_topic = current_q.get("topic")
+            orig_type = current_q.get("type")
+
+            try:
+                followup = generate_followup_question(
+                    orig_question=orig_question_text,
+                    orig_rubric=orig_rubric,
+                    orig_topic=orig_topic,
+                    orig_type=orig_type
+                )
+            except Exception as e:
+                logger.exception("generate_followup_question failed: %s", e)
+                return {"reply": "Sorry — failed to generate a follow-up question. Try again later."}
+
+            session_id = session.get("_id")
+            followup_qid = str(followup.get("_id"))
+            current_question = {
+                "q_id": followup_qid,
+                "prompt": followup.get("prompt"),
+                "rubric": followup.get("rubric", []),
+                "type": followup.get("type"),
+                "topic": followup.get("topic"),
+                "turn_type": "followup",
+                "assigned_at": datetime.utcnow()
+            }
+
+            followup_turn = {
+                "turn_id": f"turn_{uuid.uuid4().hex[:8]}",
+                "q_id": followup_qid,
+                "turn_type": "followup",
+                "q_text": followup.get("prompt"),
+                "answer_text": None,
+                "timestamp": datetime.utcnow(),
+                "feedback": None
+            }
+
+            _sessions_collection().update_one(
+                {"_id": session_id},
+                {
+                    "$set": {"current_question": current_question, "last_activity_at": datetime.utcnow()},
+                    "$push": {"turns": followup_turn}
+                }
+            )
+
+            return {
+                "reply": followup.get("prompt"),
+                "question": followup.get("prompt"),
+                "rubric": followup.get("rubric", []),
+                "q_id": followup_qid
+            }
+
+        # Fallback: start a new main
+        return start_question_for_session()
+
+    except Exception as exc:
+        logger.exception("handle_positive_ready error: %s", exc)
+        return {"reply": "Sorry — something went wrong handling your request."}
+
+# -------------------------
+# Final report generation
+# -------------------------
+FINAL_REPORT_PROMPT = """
+You are an experienced technical-interview coach. Given the candidate's interview session data below,
+produce a single cohesive final review (300-400 words). The review must include:
+
+1) A short introduction sentence.
+2) Question-wise feedback (3 bullets) — for each main question + its follow-up, include:
+   - a one-line summary identifying which question (short snippet) and whether the user answered it correctly/partly/incorrectly,
+   - a one-line note on the key strength or gap for that question (use the stored 'feedback' entry).
+3) Overall strengths (2 short bullet points).
+4) Overall weaknesses / areas for improvement (2-4 short bullet points).
+5) Actionable suggestions: short, concrete tips — e.g. be more comprehensive, align answers to rubric points, structure responses, show examples, clarify assumptions, etc.
+6) A single closing sentence encouraging practice.
+
+Rules:
+- Do NOT provide the solution to any question or step-by-step answers.
+- Keep the review professional and constructive.
+- Output plain text only (no JSON, no extra headers). Aim for 300-400 words total.
+- Use the context below.
+
+Context:
+{context}
+"""
+
+def _build_final_context_from_session(session: Dict[str, Any]) -> str:
+    """
+    Build a compact context summary from the session turns.
+    We'll pick the latest 3 main question turns and their followups (if present),
+    and include question prompt (shortened), the stored LLM feedback text, classification, and confidence.
+    """
+    turns = session.get("turns", []) or []
+    # Collect last answered turns grouped by q_id, keep order
+    grouped: Dict[str, Dict[str, Any]] = {}
+    order: List[str] = []
+    for t in turns:
+        qid = t.get("q_id") or "<unknown>"
+        if qid not in grouped:
+            grouped[qid] = {"main": None, "followup": None, "q_text": t.get("q_text") or ""}
+            order.append(qid)
+        # classify by turn_type
+        tt = t.get("turn_type")
+        if tt == "main" and grouped[qid]["main"] is None:
+            grouped[qid]["main"] = t
+            if not grouped[qid]["q_text"]:
+                grouped[qid]["q_text"] = t.get("q_text") or ""
+        elif tt == "followup" and grouped[qid]["followup"] is None:
+            grouped[qid]["followup"] = t
+            if not grouped[qid]["q_text"]:
+                grouped[qid]["q_text"] = t.get("q_text") or ""
+
+    # We want the most recent 3 main qids (preserve recency)
+    # order is insertion order; we prefer the last items
+    selected_qids = [q for q in reversed(order)][:3]
+    selected_qids.reverse()  # keep chronological order oldest->newest
+
+    parts = []
+    for idx, qid in enumerate(selected_qids, start=1):
+        entry = grouped.get(qid, {})
+        qtext = (entry.get("q_text") or "")[:220].replace("\n", " ").strip()
+        main_turn = entry.get("main")
+        follow_turn = entry.get("followup")
+
+        parts.append(f"Question {idx} (snippet): \"{qtext}\"")
+
+        if main_turn and main_turn.get("feedback"):
+            fb = main_turn["feedback"]
+            fb_text = fb.get("feedback", "") if isinstance(fb, dict) else str(fb)
+            classification = fb.get("classification") if isinstance(fb, dict) else None
+            confidence = fb.get("confidence") if isinstance(fb, dict) else None
+            parts.append(f"  - Main answer: {classification or 'unknown'} (conf={confidence}). Feedback: {fb_text[:220]}")
+        else:
+            parts.append("  - Main answer: no evaluation available.")
+
+        if follow_turn and follow_turn.get("feedback"):
+            fb = follow_turn["feedback"]
+            fb_text = fb.get("feedback", "") if isinstance(fb, dict) else str(fb)
+            classification = fb.get("classification") if isinstance(fb, dict) else None
+            confidence = fb.get("confidence") if isinstance(fb, dict) else None
+            parts.append(f"  - Follow-up: {classification or 'unknown'} (conf={confidence}). Feedback: {fb_text[:220]}")
+        else:
+            parts.append("  - Follow-up: not answered / not evaluated.")
+
+    # Add simple aggregate stats
+    main_count = int(session.get("main_questions_answered", 0))
+    follow_count = int(session.get("followups_answered", 0))
+    parts.append(f"Session stats: main_answered={main_count}, followup_answered={follow_count}.")
+
+    # Candidate metadata if present
+    meta = session.get("meta", {}) or {}
+    if meta.get("target_role") or meta.get("experience_level"):
+        parts.append(f"Candidate meta: role={meta.get('target_role')}, exp={meta.get('experience_level')}")
+
+    return "\n".join(parts)
+
+
+def _word_count(text: str) -> int:
+    return len(text.split())
+
+def _truncate_to_word_limit(text: str, max_words: int) -> str:
+    words = text.split()
+    if len(words) <= max_words:
+        return text
+    return " ".join(words[:max_words]).rstrip()
+
+def generate_final_report_if_ready() -> Optional[str]:
+    """
+    If the session has >=3 main answers and >=3 followups answered, call Gemini to generate final review,
+    store it in session['final_report'] and session['summary'] and persist, and return the report text.
+    If not ready, return None.
+    """
+    session = _get_single_session_doc()
+    if not session:
+        return None
+
+    main_count = int(session.get("main_questions_answered", 0))
+    follow_count = int(session.get("followups_answered", 0))
+
+    # Only generate when both counts are >= 3
+    if main_count < 3 or follow_count < 3:
+        return None
+
+    # Build context from session
+    context = _build_final_context_from_session(session)
+
+    prompt = FINAL_REPORT_PROMPT.format(context=context)
+
+    try:
+        raw = call_gemini(prompt=prompt, model="gemini-2.5-pro", max_tokens=800, temperature=0.0)
+        report = (raw or "").strip()
+    except Exception as e:
+        logger.exception("Final report Gemini call failed: %s", e)
+        report = "Final feedback service is currently unavailable. Please try again later."
+
+    # Basic sanitation: ensure we do not include overly long text (truncate at ~400 words)
+    report = _truncate_to_word_limit(report, 400)
+
+    # Save into session
+    session_id = session.get("_id")
+    session["final_report"] = report
+    # Also store a short summary (first 60-120 words)
+    session["summary"] = _truncate_to_word_limit(report, 120)
+    session["last_activity_at"] = datetime.utcnow()
+
+    try:
+        _update_session_doc(session_id, session)
+    except Exception:
+        logger.exception("Failed to persist final_report into session (session_id=%s)", session_id)
+
+    return report

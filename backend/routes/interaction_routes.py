@@ -3,7 +3,14 @@ from flask import Blueprint, request, jsonify
 import logging
 
 from services.interaction_service import determine_intent_from_user_message
-from services.session_service import start_question_for_session, route_answer_for_session, check_main_answer, check_followup_answer
+from services.session_service import (
+    start_question_for_session,
+    route_answer_for_session,
+    check_main_answer,
+    check_followup_answer,
+    handle_positive_ready,
+    generate_final_report_if_ready,  # <-- import final report generator
+)
 from services.clarify_service import clarify_current_question
 
 logger = logging.getLogger(__name__)
@@ -15,10 +22,9 @@ FORBIDDEN_INTENTS = {
     "request_solution",
 }
 
-
 @bp.route("/interact", methods=["POST"])
 def interact():
-    
+
     if not request.is_json:
         return jsonify({"reply": "Invalid request: expected JSON body."}), 400
 
@@ -44,27 +50,19 @@ def interact():
                     "I can't provide the complete answer or solution. "
                     "However, I can help with clarifying the question or giving hints."
                 )
-
             return jsonify({"reply": reply}), 200
 
-        # If the user said they are ready, start by picking a random question and
-        # sending it to the frontend with its rubrics
+        # positive_ready → start or generate follow-up / next question
         if intent == "positive_ready":
             try:
-                q_payload = start_question_for_session()
-                # Return the question prompt + rubric directly to the frontend
-                return jsonify({
-                    "reply": q_payload["reply"],
-                    "question": q_payload["question"],
-                    "rubric": q_payload["rubric"],
-                    "q_id": q_payload["q_id"]
-                }), 200
+                result = handle_positive_ready()
+                return jsonify(result), 200
             except Exception as e:
-                logger.exception("Failed to start question for session: %s", e)
-                return jsonify({"reply": "Sorry, failed to fetch a question. Try again later."}), 200
+                logger.exception("Failed to handle positive_ready: %s", e)
+                return jsonify({"reply": "Sorry, failed to handle readiness. Try again later."}), 200
 
+        # clarification request
         if intent == "clarify_question":
-            # the frontend message is the user's clarify request
             try:
                 clarification_reply = clarify_current_question(message)
                 return jsonify({"reply": clarification_reply}), 200
@@ -72,6 +70,7 @@ def interact():
                 logger.exception("Clarify service error: %s", e)
                 return jsonify({"reply": "Sorry, I could not produce clarification right now."}), 200
 
+        # answer handling (main / followup)
         if intent == "answer":
             routing = route_answer_for_session(message)
             handler = routing.get("handler")
@@ -79,12 +78,25 @@ def interact():
             try:
                 if handler == "check_main_answer":
                     eval_res = check_main_answer(message)
-                    # You requested a specific reply text:
-                    return jsonify({"reply": "Okay, I have evaluated the answer and let's move on to the follow up question."}), 200
+
+                    # After evaluating a main answer, check if final report is ready
+                    final_report = generate_final_report_if_ready()
+                    if final_report:
+                        # return the final report as the reply itself
+                        return jsonify({"reply": final_report}), 200
+
+                    # Otherwise continue as normal
+                    return jsonify({"reply": "Okay, I have evaluated the answer, shall we move on to the follow up question?"}), 200
 
                 elif handler == "check_followup_answer":
                     eval_res = check_followup_answer(message)
-                    return jsonify({"reply": "Okay, I have evaluated the answer, let's move on to the next question."}), 200
+
+                    # After evaluating a follow-up, check and return final report inline if ready
+                    final_report = generate_final_report_if_ready()
+                    if final_report:
+                        return jsonify({"reply": final_report}), 200
+
+                    return jsonify({"reply": "Okay, I have evaluated the answer, shall we move on to the next question?"}), 200
 
                 else:
                     return jsonify({"reply": "No active question to evaluate. Say 'I'm ready' to begin."}), 200
