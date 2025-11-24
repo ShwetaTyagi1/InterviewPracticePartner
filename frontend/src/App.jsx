@@ -5,14 +5,26 @@ import ChatInput from './components/ChatInput';
 import NameDialog from './components/NameDialog';
 import './App.css';
 
-import { startSession, sendMessage } from './api/api';
+import { startSession, sendMessage, deleteSession } from './api/api';
 
 function App() {
   const [userName, setUserName] = useState(null);
 
-  // Start session on mount
+  // Start session on mount and cleanup on unmount/reload
   useEffect(() => {
     startSession().catch(err => console.error("Session start failed", err));
+
+    const handleBeforeUnload = () => {
+      deleteSession();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // Optional: also call deleteSession on component unmount if desired, 
+      // but usually beforeunload is sufficient for reloads/closes.
+    };
   }, []);
 
   // messages state (very small message model)
@@ -90,10 +102,22 @@ function App() {
 
       // 4. Update state with bot response
       setBotTyping(false);
+
+      let replyText = data.reply;
+      // Filter out technical placeholder text
+      if (replyText) {
+        const lowerReply = replyText.toLowerCase();
+        if (lowerReply.includes("placeholder no intent detected")) {
+          replyText = "I am sorry, I won't be able to help you with this query.";
+        } else if (lowerReply.includes("(placeholder) detected intent: off_topic")) {
+          replyText = "I am sorry, I can't help you with this query. Shall we move to the next question?";
+        }
+      }
+
       const botMsg = {
         id: `bot_${Date.now()}`,
         role: 'bot',
-        text: data.reply,
+        text: replyText,
         createdAt: new Date().toISOString()
       };
       setMessages((prev) => [...prev, botMsg]);
