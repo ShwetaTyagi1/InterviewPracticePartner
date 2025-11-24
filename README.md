@@ -5,9 +5,9 @@
 ## Backend
 
 1. Run `git clone https://github.com/ShwetaTyagi1/InterviewPracticePartner.git` in the terminal.
-2. Run `pip install -r requirements.txt` in the terminal (inside backend directory).  
+2. Run `pip install -r requirements.txt` or `python -m pip install -r requirements.txt` in the terminal (inside backend directory).  
    **Example:**  
-   `C:\InterviewPracticePartner\backend> pip install -r requirements.txt`
+   `C:\InterviewPracticePartner\backend> python -m pip install -r requirements.txt`
 3. Create a `.env` file in the backend directory containing:
    ```
    MONGO_URI=connection string to mongodb
