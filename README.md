@@ -1,4 +1,90 @@
-# InterviewPracticePartner
+# IntervueX
+
+An AI-powered, state-aware interview practice platform for mastering Computer Science fundamentals.
+IntervueX helps candidates improve their technical interview skills by simulating a realistic interviewer that adapts, evaluates, and guides—without behaving like a generic chatbot. It is built around a deterministic state machine that uses AI only when needed, ensuring structure, consistency, and pedagogical rigor.
+
+## Key Features
+
+Adaptive Questioning
+Dynamically adjusts difficulty based on the user’s performance.
+
+Intent-Driven Interaction
+Identifies user intent (ready, clarify, answer, off-topic, etc.) and routes it through deterministic logic instead of relying solely on an LLM.
+
+Clarification Without Spoilers
+Provides hints or rephrasing for “clarify question” intents using a custom Clarification Service.
+
+Structured Evaluation
+User answers are graded as Correct, Partially Correct, or Incorrect based on rubrics stored in the database.
+
+Guardrails for Off-Topic Queries
+Off-topic messages trigger predefined refusal messages, preventing derailment.
+
+Session Persistence & Cleanup
+MongoDB stores the current question, state, and context. Sessions are automatically cleaned up on browser unload.
+
+## Architecture Overview
+Frontend
+Built with React + Vite
+Modern, responsive dark-mode UI
+Styled with vanilla CSS
+“Chat bar on demand” design for reduced cognitive load
+Uses REST calls to drive the deterministic interview flow
+
+Backend
+Flask API orchestrating all logic
+
+Handles:
+Session creation & deletion
+Question selection
+Intent classification
+Clarification logic
+Evaluation routing
+Follow-up question generation
+
+AI Engine
+Google Gemini Pro via the google-genai SDK
+
+Used only for:
+Natural language understanding
+Clarifications
+Evaluation support
+All high-level interview logic is deterministic and rule-driven.
+
+Database
+MongoDB
+
+Stores:
+Session context
+Current question I
+Intent states
+Question rubrics
+User progression
+
+CommunicatioN
+RESTful API endpoints connecting React ↔ Flask
+Real-time session management
+Automatic cleanup using a beforeunload beacon request
+
+## Interview Flow Logic
+
+User starts a session → /session/start
+User expresses readiness → Intent classifier detects positive_ready
+Backend picks a CS question (OOP/OS/DBMS/CN) with rubric
+User can ask clarification → Clarification Service rephrases without revealing the answer
+User answers → Evaluation Engine compares to rubric
+Follow-up questions trigger for partial answers
+Off-topic queries are blocked with predefined responses
+Session ends → /session/delete cleans MongoDB entry
+
+## Design Philosophy
+
+Reduce cognitive load by hiding the chat bar until onboarding completes
+Provide a premium feel using glassmorphism and gradient-based UI
+Maintain strict boundaries between “chatbot behavior” and “interviewer behavior”
+Ensure consistent interview flow using deterministic state transitions
+
+
 
 # Setup Instructions
 
