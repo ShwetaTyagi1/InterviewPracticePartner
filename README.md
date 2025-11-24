@@ -19,8 +19,9 @@
 4. Run `python app.py` in the backend directory.  
    **Example:**  
    `C:\InterviewPracticePartner\backend> python app.py`
-5. Use Postman to add a few questions to the database.
 
+5. Use Postman to add a few questions to the database.
+<img width="1071" height="434" alt="Screenshot 2025-11-24 134332" src="https://github.com/user-attachments/assets/c21c806a-256a-486b-8f89-f9b9260f3263" />
 ---
 
 ## Frontend
