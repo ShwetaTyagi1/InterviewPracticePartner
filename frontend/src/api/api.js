@@ -60,3 +60,27 @@ export const sendMessage = async (text) => {
         throw error;
     }
 };
+
+/**
+ * Deletes the current session.
+ * Should be called when the user leaves or reloads the page.
+ */
+export const deleteSession = () => {
+    const url = `${API_BASE_URL}/session/delete`;
+
+    // Use sendBeacon if available for reliable delivery on unload
+    if (navigator.sendBeacon) {
+        const blob = new Blob([JSON.stringify({})], { type: 'application/json' });
+        navigator.sendBeacon(url, blob);
+        console.log('[API] Session delete beacon sent');
+    } else {
+        // Fallback to fetch with keepalive
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            keepalive: true,
+        }).catch(err => console.error('[API] Error deleting session:', err));
+    }
+};
